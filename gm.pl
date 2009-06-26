@@ -27,11 +27,12 @@ my $local_dbpath = "tmp/globaldb";
 ################################################################################
 # Variables / paths                                                            #
 ################################################################################
-my $debug = 1;
+my $debug = 0;
 
 my $gtags = "$bin_path/gtags";
 my $global = "$bin_path/global";
-my $gtags_conf = "$bin_path/../share/gtags";
+my $gtags_conf = "$bin_path/../share/gtags/gtags.conf";
+$gtags_conf =~ s/\//\\/g;
 
 my $command = "";
 
@@ -58,6 +59,7 @@ if ($os =~ /cygwin/) {
 } elsif ($os =~ /win32/i) {
 	print "[DEBUG] running $os version of $0\n" if $debug;
 	$source_path =~ s/\//\\/g;
+	$bin_path =~ s/\//\\/g;
 } else {
 	print "Unsupported perl version.\n";
 	exit;
@@ -86,6 +88,8 @@ print "[DEBUG] globaldb_path: $globaldb_path\n" if $debug;
 if ($os =~ /cygwin/) {
 	$uniq_dbpath = `cygpath -w $uniq_dbpath`;
 	chomp($uniq_dbpath);
+} else {
+	$uniq_dbpath =~ s/\//\\/g;
 }
 
 
@@ -113,46 +117,58 @@ sub exec {
 ################################################################################
 print "Collecting data for GNU global database (Windows version) ...\n";
 
+
 $ENV{'GTAGSROOT'} = $source_path;
 $ENV{'GTAGSDBPATH'} = $uniq_dbpath;
 $ENV{'GTAGSCONF'} = $gtags_conf;
 
-#if (&is_gtags_existing($uniq_dbpath)) {
-#	&exec($global . " -u");
-#} else {
-#	$command = $gtags . " \"$uniq_dbpath\"";
-#}
-#
-#&exec($command);
+if (&is_gtags_existing($uniq_dbpath)) {
+	&exec($global . " -u");
+} else {
+	$command = $gtags . " \"$uniq_dbpath\"";
+	&exec($command);
+}
+
 
 # Write to file so the bat file can put this into environment variables.
-open ENVFILE, ">$script_dir/env.txt" or die "$!\n";
-print "\nType following commands:\n";
-print "  set PATH=%PATH%;$bin_path\n";
-print "  set GTAGSROOT=$ENV{'GTAGSROOT'}\n";
-print "  set GTAGSDBPATH=$ENV{'GTAGSDBPATH'}\n";
-print ENVFILE "$ENV{'GTAGSROOT'}\n";
-print ENVFILE "$ENV{'GTAGSDBPATH'}\n";
-close ENVFILE;
-
-my $bat_file = "$script_dir/env.bat";
+my $bat_file = "$uniq_dbpath/env.bat";
 open BATFILE, ">$bat_file" or die "$!\n";
 
 if ($os =~ /cygwin/) {
-	$bat_file = `cygpath -w $script_dir/env.bat`;
+	$bat_file = `cygpath -w $bat_file`;
 	chomp($bat_file);
+} else {
+	$bat_file =~ s/\//\\/g;
 }
 
-print "\nor run the file:\n  $bat_file\n";
+# Create a bat file which sets everything up.
+print BATFILE "echo off\n";
 print BATFILE "set PATH=%PATH%;$bin_path\n";
 print BATFILE "set GTAGSROOT=$ENV{'GTAGSROOT'}\n";
 print BATFILE "set GTAGSDBPATH=$ENV{'GTAGSDBPATH'}\n";
 print BATFILE "set GTAGSCONF=$ENV{'GTAGSCONF'}\n";
+print BATFILE "$drive_path\n";
+print BATFILE "cls\n";
+print BATFILE "cd $source_path\n";
+print BATFILE "echo Environment variables set, ready to use GNU Global.\n";
+print BATFILE "echo.\n";
+print BATFILE "echo Some simple global commands:\n";
+print BATFILE "echo  global func1       show files that func1 is defined in.\n";
+print BATFILE "echo  global -r func1    show files which func1 is referred from.\n";
+print BATFILE "echo  global -x func1    show details about func1.\n";
+print BATFILE "echo  global -a func1    gives absolute path name.\n";
+print BATFILE "echo  global -s X        locate symbols not defined in GTAGS.\n";
+print BATFILE "echo  global -g 'string' grep for 'string' in all files.\n";
+print BATFILE "echo  global -f file     print functions in 'file'.\n";
+print BATFILE "echo  global -c kmem     list all function beginning with 'kmem'.\n";
+print BATFILE "echo.\n";
+print BATFILE "cmd\n";
 close BATFILE; 
 
 my $end = new Benchmark;
 my $diff = timediff($end, $start);
 print "\nTime taken was ", timestr($diff, 'nop'), " seconds\n";
+print "\nDone! To use the new database, please run the file:\n  $bat_file\n";
 
 
 
