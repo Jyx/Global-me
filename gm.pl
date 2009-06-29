@@ -143,6 +143,7 @@ if ($os =~ /cygwin/) {
 
 # Create a bat file which sets everything up.
 print BATFILE "echo off\n";
+print BATFILE "title GNU Global database\n";
 print BATFILE "set PATH=%PATH%;$bin_path\n";
 print BATFILE "set GTAGSROOT=$ENV{'GTAGSROOT'}\n";
 print BATFILE "set GTAGSDBPATH=$ENV{'GTAGSDBPATH'}\n";
